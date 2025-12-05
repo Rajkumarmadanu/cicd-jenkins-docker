@@ -7,7 +7,7 @@ pipeline {
     }
 */
     environment {
-        registry = "imranvisualpath/vproappdock"
+        registry = "rajkumarmadanu/vprofileapp"
         registryCredential = 'dockerhub'
     }
 
@@ -48,32 +48,6 @@ pipeline {
             }
         }
 
-
-        stage('Building image') {
-            steps{
-              script {
-                dockerImage = docker.build registry + ":$BUILD_NUMBER"
-              }
-            }
-        }
-        
-        stage('Deploy Image') {
-          steps{
-            script {
-              docker.withRegistry( '', registryCredential ) {
-                dockerImage.push("$BUILD_NUMBER")
-                dockerImage.push('latest')
-              }
-            }
-          }
-        }
-
-        stage('Remove Unused docker image') {
-          steps{
-            sh "docker rmi $registry:$BUILD_NUMBER"
-          }
-        }
-
         stage('CODE ANALYSIS with SONARQUBE') {
 
             environment {
@@ -97,12 +71,40 @@ pipeline {
                 }
             }
         }
-        stage('Kubernetes Deploy') {
-	  agent { label 'KOPS' }
+
+        stage('docker bulid app image') {
             steps {
-                    sh "helm upgrade --install --force vproifle-stack helm/vprofilecharts --set appimage=${registry}:${BUILD_NUMBER} --namespace prod"
+                script {
+                    dockerImage = docker.build registry + "V$BUILD_NUMBER"
+                }
             }
         }
+
+        stage('upload image to docker hub') {
+            steps {
+                script {
+                    docker.withRegistry('', registryCredential) {
+                        dockerImage.push("V$BUILD_NUMBER")
+                        dockerImage.push('latest')
+                    }
+                }
+
+            }
+        }
+
+        stage('remove docker image from jenkins') {
+            steps {
+                sh "docker rmi $registry:V$BUILD_NUMBER"
+            }
+        }
+
+        stage('kubernetes deploy') {
+            agent {label 'kops'}
+                steps {
+                    sh " helm upgrade --install --force vprofile-stack helm/vprofilecharts --set appimage=${registry}:V${BUILD_NUMBER} --namespace prod"
+                }
+        }
+
 
     }
 
