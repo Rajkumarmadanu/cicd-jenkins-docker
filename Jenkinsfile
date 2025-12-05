@@ -27,13 +27,14 @@ pipeline {
 
         stage('UNIT TEST') {
             steps {
-                sh 'mvn test'
+                // Jacoco crashes with Java 21 unless updated – skip agent here
+                sh 'mvn test -Djacoco.skip=true'
             }
         }
 
         stage('INTEGRATION TEST') {
             steps {
-                sh 'mvn verify -DskipUnitTests'
+                sh 'mvn verify -DskipUnitTests -Djacoco.skip=true'
             }
         }
 
@@ -61,7 +62,7 @@ pipeline {
                        -Dsonar.projectName=vprofile-repo \
                        -Dsonar.projectVersion=1.0 \
                        -Dsonar.sources=src/ \
-                       -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
+                       -Dsonar.java.binaries=target \
                        -Dsonar.junit.reportsPath=target/surefire-reports/ \
                        -Dsonar.jacoco.reportsPath=target/jacoco.exec \
                        -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml'''
